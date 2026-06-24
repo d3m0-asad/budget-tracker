@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#2e7d32"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<title>Family Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --primary:#2e7d32;--primary-light:#e8f5e9;--primary-dark:#1b5e20;
+  --accent:#f57f17;--accent-light:#fff8e1;
+  --red:#c62828;--red-light:#ffebee;
+  --green:#2e7d32;--green-light:#e8f5e9;
+  --bg:#f5f7f5;--card:#fff;--text:#1a1a1a;--muted:#888;--border:#e0e0e0;
+  --shadow:0 2px 12px rgba(0,0,0,0.08);
+}
+[data-dark="true"]{
+  --bg:#121212;--card:#1e1e1e;--text:#e0e0e0;--muted:#777;--border:#333;
+  --primary-light:#1b3a1c;--accent-light:#2a2000;--red-light:#2a0a0a;--green-light:#0a1f0a;
+  --shadow:0 2px 12px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background 0.3s,color 0.3s;}
+.view{display:none;}.view.active{display:block;}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:var(--primary-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s;}
+#loader.hide{opacity:0;pointer-events:none;}
+.loader-emoji{font-size:56px;animation:bounce 1s ease-in-out infinite;}
+.loader-title{font-family:'Baloo 2',cursive;color:#fff;font-size:24px;margin-top:12px;}
+.loader-sub{font-size:12px;color:rgba(255,255,255,0.6);margin-top:4px;}
+@keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-12px);}}
+
+/* PIN SCREEN */
+#pinView{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--primary-dark),var(--primary));}
+#pinView.active{display:flex;}
+.pin-card{background:#fff;border-radius:24px;padding:2.5rem 2rem;width:90%;max-width:360px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);}
+.pin-emoji{font-size:48px;margin-bottom:0.75rem;}
+.pin-title{font-family:'Baloo 2',cursive;font-size:22px;color:var(--primary-dark);margin-bottom:4px;}
+.pin-sub{font-size:12px;color:#888;margin-bottom:2rem;}
+.pin-dots{display:flex;justify-content:center;gap:12px;margin-bottom:2rem;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:all 0.2s;}
+.pin-dot.filled{background:var(--primary);}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.pin-key{background:var(--primary-light);border:none;border-radius:14px;padding:16px;font-size:20px;font-weight:600;color:var(--primary-dark);cursor:pointer;font-family:'Poppins',sans-serif;transition:all 0.15s;user-select:none;}
+.pin-key:active{transform:scale(0.92);background:#c8e6c9;}
+.pin-key.del{background:#ffebee;color:#c62828;}
+.pin-key.del:active{background:#ffcdd2;}
+.pin-error{color:#c62828;font-size:13px;margin-top:1rem;height:20px;}
+.pin-setup-btn{background:none;border:none;color:var(--primary);font-size:12px;margin-top:1rem;cursor:pointer;font-family:'Poppins',sans-serif;text-decoration:underline;}
+
+/* HEADER */
+.app-header{background:linear-gradient(135deg,var(--primary-dark),var(--primary));padding:1rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.2);}
+.header-title{font-family:'Baloo 2',cursive;color:#fff;font-size:20px;}
+.header-sub{font-size:10px;color:rgba(255,255,255,0.7);margin-top:1px;}
+.header-actions{display:flex;gap:8px;}
+.icon-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.2);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:#fff;transition:all 0.2s;}
+.icon-btn:active{background:rgba(255,255,255,0.3);}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,0.08);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 14px;cursor:pointer;transition:all 0.2s;border:none;background:none;font-family:'Poppins',sans-serif;}
+.nav-icon{font-size:22px;margin-bottom:3px;}
+.nav-label{font-size:10px;color:var(--muted);font-weight:500;}
+.nav-item.active .nav-label{color:var(--primary);font-weight:600;}
+
+/* PAGE */
+.page{max-width:480px;margin:0 auto;padding:1rem;padding-bottom:5rem;}
+.card{background:var(--card);border-radius:16px;padding:1.25rem;box-shadow:var(--shadow);border:1px solid var(--border);margin-bottom:1rem;animation:fadeUp 0.3s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* OVERVIEW */
+.budget-hero{background:linear-gradient(135deg,var(--primary-dark),var(--primary));border-radius:20px;padding:1.5rem;margin-bottom:1rem;color:#fff;position:relative;overflow:hidden;}
+.budget-hero::after{content:'💰';position:absolute;right:-10px;bottom:-15px;font-size:80px;opacity:0.1;}
+.budget-month{font-size:12px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;}
+.budget-amount{font-family:'Baloo 2',cursive;font-size:42px;color:#fff;line-height:1;margin:6px 0;}
+.budget-sub{font-size:12px;color:rgba(255,255,255,0.8);}
+.budget-bar-wrap{background:rgba(255,255,255,0.2);border-radius:10px;height:8px;margin-top:12px;overflow:hidden;}
+.budget-bar{height:100%;border-radius:10px;background:#fff;transition:width 0.5s ease;}
+.budget-bar.warning{background:#ffcc02;}
+.budget-bar.danger{background:#ff5252;}
+
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem;}
+.stat-card{border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;}
+.stat-card.income{background:var(--green-light);border:1px solid #c8e6c9;}
+.stat-card.expense{background:var(--red-light);border:1px solid #ffcdd2;}
+.stat-icon{font-size:28px;}
+.stat-label{font-size:11px;color:var(--muted);font-weight:500;}
+.stat-amount{font-family:'Baloo 2',cursive;font-size:20px;font-weight:700;}
+.stat-card.income .stat-amount{color:var(--green);}
+.stat-card.expense .stat-amount{color:var(--red);}
+
+.balance-card{border-radius:14px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.balance-card.positive{background:var(--green-light);border:1px solid #c8e6c9;}
+.balance-card.negative{background:var(--red-light);border:1px solid #ffcdd2;}
+.balance-label{font-size:13px;color:var(--muted);}
+.balance-amount{font-family:'Baloo 2',cursive;font-size:26px;font-weight:700;}
+.balance-card.positive .balance-amount{color:var(--green);}
+.balance-card.negative .balance-amount{color:var(--red);}
+
+/* TRANSACTION LIST */
+.txn-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.txn-item:last-child{border-bottom:none;}
+.txn-cat-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.txn-info{flex:1;min-width:0;}
+.txn-desc{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txn-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.txn-amount{font-family:'Baloo 2',cursive;font-size:16px;font-weight:700;white-space:nowrap;}
+.txn-amount.income{color:var(--green);}
+.txn-amount.expense{color:var(--red);}
+.txn-delete{background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:4px;line-height:1;}
+.txn-delete:active{color:var(--red);}
+
+/* ADD ENTRY */
+.type-toggle{display:flex;background:var(--primary-light);border-radius:12px;padding:4px;margin-bottom:1.25rem;}
+.type-btn{flex:1;padding:10px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;transition:all 0.2s;background:transparent;}
+.type-btn.expense.active{background:var(--red);color:#fff;}
+.type-btn.income.active{background:var(--green);color:#fff;}
+.type-btn:not(.active){color:var(--muted);}
+
+.form-group{margin-bottom:14px;}
+.form-label{font-size:12px;color:var(--muted);font-weight:500;display:block;margin-bottom:5px;}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:'Poppins',sans-serif;outline:none;color:var(--text);background:var(--card);transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--primary);}
+.amount-input{font-size:24px;font-weight:700;text-align:center;letter-spacing:1px;}
+
+.cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+.cat-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:12px;border:2px solid var(--border);cursor:pointer;transition:all 0.2s;background:var(--card);}
+.cat-item.selected{border-color:var(--primary);background:var(--primary-light);}
+.cat-item:active{transform:scale(0.95);}
+.cat-emoji{font-size:22px;}
+.cat-name{font-size:10px;font-weight:500;color:var(--muted);text-align:center;}
+.cat-item.selected .cat-name{color:var(--primary);}
+
+.submit-btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:'Poppins',sans-serif;transition:all 0.2s;}
+.submit-btn.expense{background:var(--red);color:#fff;}
+.submit-btn.income{background:var(--green);color:#fff;}
+.submit-btn:active{transform:scale(0.98);}
+
+/* SECTION TITLE */
+.section-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;}
+
+/* BUDGET SETUP */
+.budget-setup-card{background:linear-gradient(135deg,var(--accent-light),#fff8e1);border:1px solid #ffe082;border-radius:16px;padding:1.25rem;margin-bottom:1rem;}
+
+/* REPORT */
+.report-month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.month-nav-btn{background:var(--primary-light);border:none;border-radius:10px;width:36px;height:36px;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);}
+.report-month-label{font-family:'Baloo 2',cursive;font-size:18px;font-weight:700;color:var(--text);}
+
+.cat-report-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.cat-report-item:last-child{border-bottom:none;}
+.cat-report-bar-wrap{flex:1;background:var(--border);border-radius:10px;height:6px;overflow:hidden;}
+.cat-report-bar{height:100%;border-radius:10px;background:var(--red);transition:width 0.5s;}
+.cat-report-bar.income{background:var(--green);}
+.cat-report-amount{font-family:'Baloo 2',cursive;font-size:14px;font-weight:700;color:var(--red);white-space:nowrap;}
+.cat-report-amount.income{color:var(--green);}
+
+/* SETTINGS */
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);}
+.setting-row:last-child{border-bottom:none;}
+.setting-label{font-size:14px;font-weight:500;color:var(--text);}
+.setting-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;cursor:pointer;transition:background 0.2s;border:none;}
+.toggle.on{background:var(--primary);}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left 0.2s;}
+.toggle.on::after{left:23px;}
+
+/* ANNOUNCEMENT */
+.note-item{background:var(--accent-light);border:1px solid #ffe082;border-radius:12px;padding:12px 14px;margin-bottom:8px;position:relative;}
+.note-text{font-size:13px;color:#5f4400;line-height:1.6;}
+.note-date{font-size:10px;color:#8a6a00;margin-top:4px;}
+.note-del{position:absolute;top:10px;right:10px;background:none;border:none;color:#ccc;cursor:pointer;font-size:16px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:30px;font-size:13px;font-weight:500;z-index:9999;display:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;justify-content:center;align-items:flex-end;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--card);border-radius:24px 24px 0 0;padding:1.5rem;width:100%;max-width:480px;animation:slideUp 0.3s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:1.25rem;display:flex;align-items:center;justify-content:space-between;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);}
+.modal-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;background:var(--primary);color:#fff;margin-top:10px;}
+
+.empty{text-align:center;padding:2rem;color:var(--muted);font-size:13px;}
+.empty-icon{font-size:40px;margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-emoji">💰</div>
+  <div class="loader-title">Family Budget</div>
+  <div class="loader-sub">Aapka Ghar Ka Hisaab</div>
+</div>
+<div id="toast"></div>
+
+<!-- PIN VIEW -->
+<div id="pinView" class="view">
+  <div class="pin-card">
+    <div class="pin-emoji">🔐</div>
+    <div class="pin-title" id="pinTitle">Family Budget</div>
+    <div class="pin-sub" id="pinSub">PIN daalo</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key" onclick="pinPress('0')" style="grid-column:2">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appView" class="view">
+  <div class="app-header">
+    <div>
+      <div class="header-title">💰 Family Budget</div>
+      <div class="header-sub" id="headerMonth"></div>
+    </div>
+    <div class="header-actions">
+      <div class="icon-btn" onclick="toggleDark()">🌙</div>
+      <div class="icon-btn" onclick="lockApp()">🔒</div>
+    </div>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  <div id="tab-home" class="page">
+    <div class="budget-hero" id="budgetHero">
+      <div class="budget-month" id="heroMonth"></div>
+      <div class="budget-amount" id="heroBudget">₹0</div>
+      <div class="budget-sub" id="heroSub">Monthly Budget</div>
+      <div class="budget-bar-wrap"><div class="budget-bar" id="budgetBarEl" style="width:0%"></div></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card income">
+        <div class="stat-icon">📈</div>
+        <div><div class="stat-label">Income</div><div class="stat-amount" id="totalIncome">₹0</div></div>
+      </div>
+      <div class="stat-card expense">
+        <div class="stat-icon">📉</div>
+        <div><div class="stat-label">Expense</div><div class="stat-amount" id="totalExpense">₹0</div></div>
+      </div>
+    </div>
+
+    <div class="balance-card positive" id="balanceCard">
+      <div><div class="balance-label">Bacha Hua</div><div class="balance-amount" id="balanceAmount">₹0</div></div>
+      <div style="font-size:32px;">🎉</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <span>⏱️ Recent Transactions</span>
+        <span style="font-size:11px;font-weight:400;cursor:pointer;color:var(--primary);" onclick="switchTab('add')">+ Add</span>
+      </div>
+      <div id="recentList"><div class="empty"><div class="empty-icon">📝</div>Koi entry nahi hai abhi</div></div>
+    </div>
+  </div>
+
+  <div id="tab-add" class="page" style="display:none;">
+    <div class="card">
+      <div class="type-toggle">
+        <button class="type-btn expense active" id="typeExpense" onclick="setType('expense')">📉 Expense</button>
+        <button class="type-btn income" id="typeIncome" onclick="setType('income')">📈 Income</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (₹)</label>
+        <input class="form-input amount-input" type="number" id="entryAmount" placeholder="0" inputmode="numeric"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <div class="cat-grid" id="catGrid"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Note (Optional)</label>
+        <input class="form-input" type="text" id="entryNote" placeholder="Kya kharcha tha?"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="entryDate"/>
+      </div>
+
+      <button class="submit-btn expense" id="submitBtn" onclick="addEntry()">➕ Expense Add Karo</button>
+    </div>
+  </div>
+
+  <div id="tab-report" class="page" style="display:none;">
+    <div class="report-month-nav">
+      <button class="month-nav-btn" onclick="changeReportMonth(-1)">‹</button>
+      <div class="report-month-label" id="reportMonthLabel"></div>
+      <button class="month-nav-btn" onclick="changeReportMonth(1)">›</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card income">
+        <div class="stat-icon">📈</div>
+        <div><div class="stat-label">Income</div><div class="stat-amount" id="reportIncome">₹0</div></div>
+      </div>
+      <div class="stat-card expense">
+        <div class="stat-icon">📉</div>
+        <div><div class="stat-label">Expense</div><div class="stat-amount" id="reportExpense">₹0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 Category Breakdown</div>
+      <div id="catBreakdown"><div class="empty"><div class="empty-icon">📊</div>Is mahine koi entry nahi</div></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 Sab Transactions</div>
+      <div id="reportTxnList"><div class="empty"><div class="empty-icon">📝</div>Koi entry nahi</div></div>
+    </div>
+  </div>
+
+  <div id="tab-settings" class="page" style="display:none;">
+    <!-- Budget Setup -->
+    <div class="budget-setup-card">
+      <div class="section-title">💰 Monthly Budget Set Karo</div>
+      <input class="form-input amount-input" type="number" id="budgetInput" placeholder="₹ Kitna budget hai?" inputmode="numeric" style="margin-bottom:10px;"/>
+      <button class="modal-btn" onclick="saveBudget()">✅ Budget Save Karo</button>
+    </div>
+
+    <!-- Categories -->
+    <div class="card">
+      <div class="section-title">
+        <span>📂 Categories</span>
+        <span style="font-size:11px;font-weight:400;cursor:pointer;color:var(--primary);" onclick="openAddCat()">+ Add</span>
+      </div>
+      <div id="catList"></div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card">
+      <div class="section-title">
+        <span>📢 Family Notes</span>
+        <span style="font-size:11px;font-weight:400;cursor:pointer;color:var(--primary);" onclick="openNoteModal()">+ Add</span>
+      </div>
+      <div id="notesList"><div class="empty"><div class="empty-icon">📢</div>Koi note nahi</div></div>
+    </div>
+
+    <!-- PIN Change -->
+    <div class="card">
+      <div class="section-title">🔐 PIN Settings</div>
+      <button class="modal-btn" style="background:var(--accent);margin-top:0;" onclick="openPinChange()">🔑 PIN Change Karo</button>
+    </div>
+
+    <div style="text-align:center;padding:1rem;font-size:11px;color:var(--muted);">
+      Developed by <strong>Md Asad Ansari</strong>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-item active" onclick="switchTab('home')" id="nav-home">
+      <div class="nav-icon">🏠</div><div class="nav-label">Home</div>
+    </button>
+    <button class="nav-item" onclick="switchTab('add')" id="nav-add">
+      <div class="nav-icon">➕</div><div class="nav-label">Add</div>
+    </button>
+    <button class="nav-item" onclick="switchTab('report')" id="nav-report">
+      <div class="nav-icon">📊</div><div class="nav-label">Report</div>
+    </button>
+    <button class="nav-item" onclick="switchTab('settings')" id="nav-settings">
+      <div class="nav-icon">⚙️</div><div class="nav-label">Settings</div>
+    </button>
+  </div>
+</div>
+
+<!-- ADD CATEGORY MODAL -->
+<div id="addCatModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">➕ Naya Category <button class="modal-close" onclick="closeModal('addCatModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Emoji</label><input class="form-input" type="text" id="catEmoji" placeholder="jaise: 🍔" maxlength="2"/></div>
+    <div class="form-group"><label class="form-label">Naam</label><input class="form-input" type="text" id="catName" placeholder="jaise: Bahar Khana"/></div>
+    <button class="modal-btn" onclick="addCategory()">✅ Add Karo</button>
+  </div>
+</div>
+
+<!-- ADD NOTE MODAL -->
+<div id="noteModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">📢 Family Note <button class="modal-close" onclick="closeModal('noteModal')">✕</button></div>
+    <div class="form-group"><textarea class="form-input" id="noteText" placeholder="Koi message ya note likhein..." rows="3" style="resize:none;"></textarea></div>
+    <button class="modal-btn" onclick="addNote()">✅ Note Save Karo</button>
+  </div>
+</div>
+
+<!-- PIN CHANGE MODAL -->
+<div id="pinChangeModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">🔑 PIN Change Karo <button class="modal-close" onclick="closeModal('pinChangeModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Naya PIN (4 digit)</label><input class="form-input" type="password" id="newPin" placeholder="****" maxlength="4" inputmode="numeric"/></div>
+    <div class="form-group"><label class="form-label">Confirm PIN</label><input class="form-input" type="password" id="confirmPin" placeholder="****" maxlength="4" inputmode="numeric"/></div>
+    <button class="modal-btn" onclick="changePin()">✅ PIN Save Karo</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDajHcy9Kv4UEQ_xTes2E5QXlpisz5-CWY",
+  authDomain: "budget-tracker-a0ff2.firebaseapp.com",
+  projectId: "budget-tracker-a0ff2",
+  storageBucket: "budget-tracker-a0ff2.firebasestorage.app",
+  messagingSenderId: "30595376860",
+  appId: "1:30595376860:web:d7281547b6b7c2a137b619"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Default categories
+const DEFAULT_CATS = [
+  {id:'food',emoji:'🍛',name:'Khana'},
+  {id:'grocery',emoji:'🛒',name:'Grocery'},
+  {id:'rent',emoji:'🏠',name:'Kiraya'},
+  {id:'bills',emoji:'💡',name:'Bills'},
+  {id:'transport',emoji:'🚗',name:'Transport'},
+  {id:'health',emoji:'💊',name:'Health'},
+  {id:'education',emoji:'📚',name:'Padhai'},
+  {id:'shopping',emoji:'🛍️',name:'Shopping'},
+  {id:'income',emoji:'💵',name:'Aamdani'},
+  {id:'other',emoji:'📦',name:'Other'},
+];
+
+let currentPin = '';
+let pinMode = 'enter'; // enter or setup or change
+let state = {
+  budget: 0,
+  transactions: [],
+  categories: [...DEFAULT_CATS],
+  notes: [],
+  isDark: localStorage.getItem('darkMode') === 'true',
+};
+let currentType = 'expense';
+let selectedCat = '';
+let reportDate = new Date();
+
+// Apply dark mode
+if(state.isDark) document.documentElement.setAttribute('data-dark','true');
+
+// ===== PIN SYSTEM =====
+let pinEntry = '';
+const DEFAULT_PIN = '1234';
+
+function getSavedPin(){ return localStorage.getItem('app_pin') || DEFAULT_PIN; }
+
+window.pinPress = function(num){
+  if(pinEntry.length >= 4) return;
+  pinEntry += num;
+  updatePinDots();
+  if(pinEntry.length === 4){
+    setTimeout(()=>{
+      if(pinMode === 'enter'){
+        if(pinEntry === getSavedPin()){
+          showView('appView');
+          initApp();
+        } else {
+          document.getElementById('pinError').textContent = '❌ Galat PIN! Dobara try karo.';
+          pinEntry = '';
+          updatePinDots();
+        }
+      } else if(pinMode === 'change-new'){
+        window._newPin = pinEntry;
+        pinEntry = '';
+        updatePinDots();
+        pinMode = 'change-confirm';
+        document.getElementById('pinSub').textContent = 'Dobara PIN daalo confirm karne ke liye';
+      } else if(pinMode === 'change-confirm'){
+        if(pinEntry === window._newPin){
+          localStorage.setItem('app_pin', pinEntry);
+          pinEntry = ''; pinMode = 'enter';
+          showView('appView');
+          showToast('✅ PIN change ho gaya!');
+        } else {
+          document.getElementById('pinError').textContent = '❌ PIN match nahi kiya!';
+          pinEntry = '';
+          updatePinDots();
+        }
+      }
+    }, 100);
+  }
+};
+
+window.pinDel = function(){
+  pinEntry = pinEntry.slice(0,-1);
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+};
+
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    const d = document.getElementById('d'+i);
+    d.classList.toggle('filled', i < pinEntry.length);
+  }
+}
+
+window.lockApp = function(){
+  pinEntry = ''; pinMode = 'enter';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinSub').textContent = 'PIN daalo';
+  showView('pinView');
+};
+
+window.openPinChange = function(){
+  closeModal('pinChangeModal');
+  // Use inline modal for PIN change
+  pinMode = 'change-new';
+  pinEntry = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinSub').textContent = 'Naya PIN daalo (4 digit)';
+  showView('pinView');
+};
+
+// ===== UTILS =====
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showToast(msg, dur=2500){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>t.style.display='none', dur);
+}
+
+window.openModal = function(id){ document.getElementById(id).classList.add('show'); };
+window.closeModal = function(id){ document.getElementById(id).classList.remove('show'); };
+window.openAddCat = function(){ openModal('addCatModal'); };
+window.openNoteModal = function(){ openModal('noteModal'); };
+
+function getCurrentMonth(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function getMonthLabel(d){ return d.toLocaleString('hi-IN',{month:'long',year:'numeric'}); }
+
+window.toggleDark = function(){
+  state.isDark = !state.isDark;
+  document.documentElement.setAttribute('data-dark', state.isDark?'true':'false');
+  localStorage.setItem('darkMode', state.isDark);
+};
+
+window.switchTab = function(tab){
+  ['home','add','report','settings'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('nav-'+t).classList.toggle('active', t===tab);
+  });
+  if(tab==='home') renderHome();
+  if(tab==='add') renderCatGrid();
+  if(tab==='report') renderReport();
+  if(tab==='settings') renderSettings();
+};
+
+// ===== FIREBASE =====
+async function loadData(){
+  try{
+    // Load settings
+    const settSnap = await getDoc(doc(db,'budget','settings'));
+    if(settSnap.exists()){
+      const d = settSnap.data();
+      state.budget = d.budget || 0;
+      if(d.categories) state.categories = d.categories;
+    }
+    // Load transactions
+    const txSnap = await getDocs(collection(db,'transactions'));
+    state.transactions = [];
+    txSnap.forEach(d=>state.transactions.push({id:d.id,...d.data()}));
+    state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    // Load notes
+    const noteSnap = await getDocs(collection(db,'notes'));
+    state.notes = [];
+    noteSnap.forEach(d=>state.notes.push({id:d.id,...d.data()}));
+    state.notes.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  }catch(e){ console.error(e); }
+}
+
+async function saveSettings(){
+  await setDoc(doc(db,'budget','settings'),{
+    budget: state.budget,
+    categories: state.categories,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+// ===== INIT =====
+async function initApp(){
+  await loadData();
+  document.getElementById('headerMonth').textContent = getMonthLabel(new Date());
+  document.getElementById('entryDate').value = new Date().toISOString().split('T')[0];
+  renderHome();
+  renderCatGrid();
+  document.getElementById('loader').classList.add('hide');
+}
+
+// ===== HOME =====
+function renderHome(){
+  const month = getCurrentMonth();
+  const monthTxns = state.transactions.filter(t=>t.date.startsWith(month));
+  const income = monthTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = monthTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const balance = income - expense;
+
+  document.getElementById('heroBudget').textContent = `₹${state.budget.toLocaleString('hi-IN')}`;
+  document.getElementById('heroMonth').textContent = getMonthLabel(new Date());
+  document.getElementById('heroSub').textContent = state.budget > 0 ? `₹${expense.toLocaleString('hi-IN')} kharch hua` : 'Budget set nahi hai';
+  document.getElementById('totalIncome').textContent = `₹${income.toLocaleString('hi-IN')}`;
+  document.getElementById('totalExpense').textContent = `₹${expense.toLocaleString('hi-IN')}`;
+
+  // Balance
+  const balCard = document.getElementById('balanceCard');
+  const balAmt = document.getElementById('balanceAmount');
+  balAmt.textContent = `₹${Math.abs(balance).toLocaleString('hi-IN')}`;
+  if(balance >= 0){
+    balCard.className = 'balance-card positive';
+    balCard.innerHTML = `<div><div class="balance-label">Bacha Hua 💚</div><div class="balance-amount" style="color:var(--green);">₹${balance.toLocaleString('hi-IN')}</div></div><div style="font-size:32px;">🎉</div>`;
+  } else {
+    balCard.className = 'balance-card negative';
+    balCard.innerHTML = `<div><div class="balance-label">Budget Se Zyada ❌</div><div class="balance-amount" style="color:var(--red);">₹${Math.abs(balance).toLocaleString('hi-IN')}</div></div><div style="font-size:32px;">⚠️</div>`;
+  }
+
+  // Budget bar
+  if(state.budget > 0){
+    const pct = Math.min((expense/state.budget)*100, 100);
+    const bar = document.getElementById('budgetBarEl');
+    bar.style.width = pct+'%';
+    bar.className = 'budget-bar' + (pct>90?' danger':pct>70?' warning':'');
+  }
+
+  // Recent
+  const recent = monthTxns.slice(0,8);
+  const el = document.getElementById('recentList');
+  if(!recent.length){
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📝</div>Is mahine koi entry nahi hai</div>';
+    return;
+  }
+  el.innerHTML = recent.map(t=>txnHTML(t)).join('');
+}
+
+function txnHTML(t){
+  const cat = state.categories.find(c=>c.id===t.cat) || {emoji:'📦',name:'Other'};
+  const bg = t.type==='income'?'#e8f5e9':'#ffebee';
+  return `<div class="txn-item">
+    <div class="txn-cat-icon" style="background:${bg};">${cat.emoji}</div>
+    <div class="txn-info">
+      <div class="txn-desc">${t.note||cat.name}</div>
+      <div class="txn-meta">${cat.name} • ${new Date(t.date).toLocaleDateString('hi-IN')}</div>
+    </div>
+    <div class="txn-amount ${t.type}">${t.type==='income'?'+':'-'}₹${t.amount.toLocaleString('hi-IN')}</div>
+    <button class="txn-delete" onclick="deleteEntry('${t.id}')">✕</button>
+  </div>`;
+}
+
+// ===== ADD ENTRY =====
+window.setType = function(type){
+  currentType = type;
+  document.getElementById('typeExpense').classList.toggle('active', type==='expense');
+  document.getElementById('typeIncome').classList.toggle('active', type==='income');
+  const btn = document.getElementById('submitBtn');
+  btn.className = `submit-btn ${type}`;
+  btn.textContent = type==='expense' ? '➕ Expense Add Karo' : '➕ Income Add Karo';
+  selectedCat = '';
+  renderCatGrid();
+};
+
+function renderCatGrid(){
+  const cats = currentType==='income'
+    ? state.categories.filter(c=>c.id==='income'||c.id==='other'||c.id.startsWith('inc'))
+    : state.categories.filter(c=>c.id!=='income');
+  if(currentType==='income') {
+    // Show all for income
+    document.getElementById('catGrid').innerHTML = state.categories.map(c=>`
+      <div class="cat-item ${selectedCat===c.id?'selected':''}" onclick="selectCat('${c.id}')">
+        <div class="cat-emoji">${c.emoji}</div>
+        <div class="cat-name">${c.name}</div>
+      </div>`).join('');
+  } else {
+    document.getElementById('catGrid').innerHTML = state.categories.map(c=>`
+      <div class="cat-item ${selectedCat===c.id?'selected':''}" onclick="selectCat('${c.id}')">
+        <div class="cat-emoji">${c.emoji}</div>
+        <div class="cat-name">${c.name}</div>
+      </div>`).join('');
+  }
+}
+
+window.selectCat = function(id){
+  selectedCat = id;
+  renderCatGrid();
+};
+
+window.addEntry = async function(){
+  const amount = parseFloat(document.getElementById('entryAmount').value);
+  const note = document.getElementById('entryNote').value.trim();
+  const date = document.getElementById('entryDate').value;
+  if(!amount||amount<=0){showToast('❌ Amount daalo!');return;}
+  if(!selectedCat){showToast('❌ Category choose karo!');return;}
+  if(!date){showToast('❌ Date choose karo!');return;}
+  try{
+    const entry = {type:currentType,amount,cat:selectedCat,note,date,createdAt:new Date().toISOString()};
+    const ref = await addDoc(collection(db,'transactions'),entry);
+    state.transactions.unshift({id:ref.id,...entry});
+    state.transactions.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    document.getElementById('entryAmount').value='';
+    document.getElementById('entryNote').value='';
+    selectedCat='';
+    renderCatGrid();
+    showToast(currentType==='expense'?'✅ Expense add ho gaya!':'✅ Income add ho gaya!');
+    switchTab('home');
+  }catch(e){showToast('❌ Error: '+e.message);}
+};
+
+window.deleteEntry = async function(id){
+  if(!confirm('Is entry ko delete karna chahte hain?')) return;
+  try{
+    await deleteDoc(doc(db,'transactions',id));
+    state.transactions = state.transactions.filter(t=>t.id!==id);
+    renderHome();
+    showToast('🗑️ Entry delete ho gayi!');
+  }catch(e){showToast('❌ Error!');}
+};
+
+// ===== BUDGET =====
+window.saveBudget = async function(){
+  const val = parseFloat(document.getElementById('budgetInput').value);
+  if(!val||val<=0){showToast('❌ Sahi amount daalo!');return;}
+  state.budget = val;
+  await saveSettings();
+  showToast('✅ Budget save ho gaya!');
+  renderHome();
+};
+
+// ===== CATEGORIES =====
+window.addCategory = async function(){
+  const emoji = document.getElementById('catEmoji').value.trim();
+  const name = document.getElementById('catName').value.trim();
+  if(!emoji||!name){showToast('❌ Emoji aur naam daalo!');return;}
+  const id = 'cat_'+Date.now();
+  state.categories.push({id,emoji,name});
+  await saveSettings();
+  closeModal('addCatModal');
+  document.getElementById('catEmoji').value='';
+  document.getElementById('catName').value='';
+  renderSettings();
+  showToast('✅ Category add ho gayi!');
+};
+
+async function deleteCategory(id){
+  if(DEFAULT_CATS.find(c=>c.id===id)){showToast('❌ Default category delete nahi ho sakti!');return;}
+  state.categories = state.categories.filter(c=>c.id!==id);
+  await saveSettings();
+  renderSettings();
+  showToast('🗑️ Category delete ho gayi!');
+}
+window.deleteCategory = deleteCategory;
+
+// ===== NOTES =====
+window.addNote = async function(){
+  const text = document.getElementById('noteText').value.trim();
+  if(!text){showToast('❌ Note likhein!');return;}
+  try{
+    const note = {text,createdAt:new Date().toISOString()};
+    const ref = await addDoc(collection(db,'notes'),note);
+    state.notes.unshift({id:ref.id,...note});
+    closeModal('noteModal');
+    document.getElementById('noteText').value='';
+    renderSettings();
+    showToast('✅ Note save ho gaya!');
+  }catch(e){showToast('❌ Error!');}
+};
+
+window.deleteNote = async function(id){
+  await deleteDoc(doc(db,'notes',id));
+  state.notes = state.notes.filter(n=>n.id!==id);
+  renderSettings();
+  showToast('🗑️ Note delete ho gaya!');
+};
+
+// ===== REPORT =====
+window.changeReportMonth = function(dir){
+  reportDate = new Date(reportDate.getFullYear(), reportDate.getMonth()+dir, 1);
+  renderReport();
+};
+
+function renderReport(){
+  const month = `${reportDate.getFullYear()}-${String(reportDate.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('reportMonthLabel').textContent = getMonthLabel(reportDate);
+  const txns = state.transactions.filter(t=>t.date.startsWith(month));
+  const income = txns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const expense = txns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('reportIncome').textContent = `₹${income.toLocaleString('hi-IN')}`;
+  document.getElementById('reportExpense').textContent = `₹${expense.toLocaleString('hi-IN')}`;
+
+  // Category breakdown
+  const catMap = {};
+  txns.forEach(t=>{
+    if(!catMap[t.cat]) catMap[t.cat]={amount:0,type:t.type};
+    catMap[t.cat].amount += t.amount;
+  });
+  const maxAmt = Math.max(...Object.values(catMap).map(v=>v.amount),1);
+  const breakdown = document.getElementById('catBreakdown');
+  if(!Object.keys(catMap).length){
+    breakdown.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Is mahine koi entry nahi</div>';
+  } else {
+    breakdown.innerHTML = Object.entries(catMap).sort((a,b)=>b[1].amount-a[1].amount).map(([id,v])=>{
+      const cat = state.categories.find(c=>c.id===id)||{emoji:'📦',name:'Other'};
+      const pct = (v.amount/maxAmt)*100;
+      return `<div class="cat-report-item">
+        <div style="font-size:20px;">${cat.emoji}</div>
+        <div style="font-size:12px;color:var(--muted);min-width:60px;">${cat.name}</div>
+        <div class="cat-report-bar-wrap"><div class="cat-report-bar ${v.type}" style="width:${pct}%"></div></div>
+        <div class="cat-report-amount ${v.type}">₹${v.amount.toLocaleString('hi-IN')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // All transactions
+  const txnEl = document.getElementById('reportTxnList');
+  if(!txns.length){
+    txnEl.innerHTML='<div class="empty"><div class="empty-icon">📝</div>Koi entry nahi</div>';
+  } else {
+    txnEl.innerHTML = txns.map(t=>txnHTML(t)).join('');
+  }
+}
+
+// ===== SETTINGS RENDER =====
+function renderSettings(){
+  document.getElementById('budgetInput').value = state.budget||'';
+  // Categories
+  document.getElementById('catList').innerHTML = state.categories.map(c=>`
+    <div class="txn-item">
+      <div style="font-size:24px;">${c.emoji}</div>
+      <div class="txn-info"><div class="txn-desc">${c.name}</div></div>
+      ${!DEFAULT_CATS.find(d=>d.id===c.id)?`<button class="txn-delete" onclick="deleteCategory('${c.id}')">✕</button>`:''}
+    </div>`).join('');
+  // Notes
+  const noteEl = document.getElementById('notesList');
+  if(!state.notes.length){
+    noteEl.innerHTML='<div class="empty"><div class="empty-icon">📢</div>Koi note nahi</div>';
+  } else {
+    noteEl.innerHTML = state.notes.map(n=>`
+      <div class="note-item">
+        <div class="note-text">${n.text}</div>
+        <div class="note-date">${new Date(n.createdAt).toLocaleDateString('hi-IN')}</div>
+        <button class="note-del" onclick="deleteNote('${n.id}')">✕</button>
+      </div>`).join('');
+  }
+}
+
+// ===== START =====
+document.getElementById('loader').classList.remove('hide');
+setTimeout(()=>{
+  document.getElementById('loader').classList.add('hide');
+  showView('pinView');
+}, 1200);
+</script>
+</body>
+</html>
